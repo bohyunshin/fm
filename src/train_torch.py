@@ -58,7 +58,6 @@ def main(args: ArgumentParser.parse_args):
     )
 
     # set up model
-    # import embedding module
     model_path = f"model.torch.{args.model}"
     model_module = importlib.import_module(model_path).Model
     model = model_module(input_dim=len(feature_names))
