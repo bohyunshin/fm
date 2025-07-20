@@ -1,0 +1,12 @@
+data:
+  split:
+    val_time_point: "2020-10-01"
+    test_time_point: "2020-10-15"
+  features:
+    numerical: []
+    categorical:
+      - product_brand
+      - partner_id
+  extra_columns:
+    label: "Sale"
+    timestamp: "click_timestamp"
