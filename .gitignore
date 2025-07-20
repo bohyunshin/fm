@@ -1,0 +1,24 @@
+.idea/
+.venv/
+venv/
+.vscode/
+*.log
+*.pt
+*.pkl
+__pycache__/
+.ipynb_checkpoints/
+.python-version
+
+data/*
+!data/REAMDE.md
+result/*
+src/result/*
+tests/result/*
+
+# line profile analysis file
+*.lprof
+
+zip/
+trained_models/
+
+.DS_Store
