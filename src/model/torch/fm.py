@@ -10,7 +10,7 @@ class Model(nn.Module):
     where <vi, vj> is the dot product of latent vectors
     """
 
-    def __init__(self, input_dim, embedding_dim=32):
+    def __init__(self, num_features, embedding_dim=32, **kwargs):
         """
         Args:
             num_features: Number of input features
@@ -22,11 +22,11 @@ class Model(nn.Module):
         self.bias = nn.Parameter(torch.zeros(1))
 
         # Linear weights (first-order interactions)
-        self.linear = nn.Linear(input_dim, 1, bias=False)
+        self.linear = nn.Linear(num_features, 1, bias=False)
 
         # Embedding matrix for second-order interactions
         # Each feature gets an embedding vector of size embedding_dim
-        self.embeddings = nn.Embedding(input_dim, embedding_dim)
+        self.embeddings = nn.Embedding(num_features, embedding_dim)
 
         # Initialize parameters
         self._init_weights()

@@ -72,7 +72,7 @@ $ poetry run python3 src/train_torch.py \
 ```
 
 
-## Experiment Reesults
+## Experiment Results
 
 |Model                         |Dataset  |Test loss|Test Macro F1|
 |------------------------------|---------|---------|-------------|

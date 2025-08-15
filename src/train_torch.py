@@ -65,7 +65,11 @@ def main(args: ArgumentParser.parse_args):
     # set up model
     model_path = f"model.torch.{args.model}"
     model_module = importlib.import_module(model_path).Model
-    model = model_module(input_dim=len(feature_names))
+    model = model_module(
+        # fm model parameters
+        num_features=len(feature_names),
+        embedding_dim=args.embedding_dim,
+    )
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     criterion = nn.BCELoss()
     train_losses = []
