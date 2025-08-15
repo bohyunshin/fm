@@ -1,14 +1,25 @@
-from typing import List
+from typing import List, Tuple, Optional
 from datetime import datetime
 
 import pandas as pd
 
+from sklearn.preprocessing import OneHotEncoder
+import torch
 
-def one_hot_encoding(data: pd.DataFrame, categorical_columns: List[str]):
-    data_encoded = pd.get_dummies(
-        data, columns=categorical_columns, drop_first=True, dtype=int
+
+def sparse_one_hot_encoding(data: pd.DataFrame, categorical_columns: List[str]):
+    encoder = OneHotEncoder(drop="first", sparse_output=True, dtype=int)
+
+    # one hot encoding with sparse matrix
+    sparse_matrix = encoder.fit_transform(data[categorical_columns])
+
+    # convert csr sparse matrix to torch type
+    sparse_tensor = torch.sparse_coo_tensor(
+        torch.from_numpy(sparse_matrix.nonzero()),  # indices
+        torch.from_numpy(sparse_matrix.data).float(),  # values
+        torch.Size(sparse_matrix.shape),  # size
     )
-    return data_encoded
+    return sparse_tensor
 
 
 def fill_in_missing_values_and_create_flag(
@@ -56,6 +67,62 @@ class Preprocessor:
         self.categorical_columns = categorical_columns
         self.timestamp_column = timestamp_column
         self.y_column = y_column
+        self.encoder: Optional[OneHotEncoder] = None
+        self.feature_names: Optional[List[str]] = None
+
+    def fit_and_preprocess(
+        self, data: pd.DataFrame, val_time_point: datetime, test_time_point: datetime
+    ) -> Tuple:
+        """Fit encoder on train data only, then transform all splits."""
+        y = data[self.y_column]
+        data_copy = data.copy()
+        data_copy, time_based_feature_names = extract_timestamp_features(
+            data=data_copy, timestamp_column=self.timestamp_column
+        )
+        dt = data_copy[self.timestamp_column]
+
+        # Split data based on timestamps
+        train_mask = dt < val_time_point
+        val_mask = (dt >= val_time_point) & (dt < test_time_point)
+        test_mask = dt >= test_time_point
+
+        # Prepare categorical data for all splits
+        cat_data = fill_in_missing_values_and_create_flag(
+            data=data_copy,
+            target_columns=self.categorical_columns + time_based_feature_names,
+        )
+
+        # Get column names
+        all_categorical_columns = self.categorical_columns + time_based_feature_names
+        missing_flag_columns = [
+            col for col in cat_data.columns if col.endswith("_missing_flag")
+        ]
+        all_columns = all_categorical_columns + missing_flag_columns
+
+        # Fit encoder only on training data
+        train_cat_data = cat_data[train_mask]
+        self.encoder = OneHotEncoder(
+            drop="first", sparse_output=True, dtype=int, handle_unknown="ignore"
+        )
+        self.encoder.fit(train_cat_data[all_columns])
+        self.feature_names = self.encoder.get_feature_names_out(all_columns).tolist()
+
+        # Transform all splits using fitted encoder
+        train_features = self.encoder.transform(train_cat_data[all_columns])
+        val_features = self.encoder.transform(cat_data[val_mask][all_columns])
+        test_features = self.encoder.transform(cat_data[test_mask][all_columns])
+
+        # Prepare labels
+        train_labels = y[train_mask].values
+        val_labels = y[val_mask].values
+        test_labels = y[test_mask].values
+
+        return (
+            (train_features, train_labels),
+            (val_features, val_labels),
+            (test_features, test_labels),
+            self.feature_names,
+        )
 
     def preprocess(self, data: pd.DataFrame):
         y = data[self.y_column]
@@ -67,7 +134,7 @@ class Preprocessor:
             data=data,
             target_columns=self.categorical_columns + time_based_feature_names,
         )
-        data = one_hot_encoding(
+        data = sparse_one_hot_encoding(
             data=data,
             categorical_columns=self.categorical_columns + time_based_feature_names,
         )

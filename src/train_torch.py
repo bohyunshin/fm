@@ -14,7 +14,7 @@ from libs.config import load_yaml
 from libs.logger import setup_logger
 from data.criteo import DataLoader
 from preprocess.preprocessor import Preprocessor
-from prepare_model_data.torch import split_data, prepare_torch_dataloader
+from prepare_model_data.torch import prepare_sparse_torch_dataloader
 
 ROOT_PATH = os.path.join(os.path.dirname(__file__), "..")
 CONFIG_PATH = os.path.join(ROOT_PATH, "./config/{model}.yaml")
@@ -35,30 +35,34 @@ def main(args: ArgumentParser.parse_args):
         data_path=args.criteo_data_path,
         logger=logger,
     ).load(is_test=args.is_test)
-    data_preproc, feature_names = Preprocessor(
+
+    # Updated to fit encoder only on training data
+    train_data, val_data, test_data, feature_names = Preprocessor(
         categorical_columns=config.data.features.categorical,
         timestamp_column=config.data.extra_columns.timestamp,
         y_column=config.data.extra_columns.label,
-    ).preprocess(data=data)
-
-    train, val, test = split_data(
-        data=data_preproc,
+    ).fit_and_preprocess(
+        data=data,
         val_time_point=datetime.strptime(config.data.split.val_time_point, "%Y-%m-%d"),
         test_time_point=datetime.strptime(
             config.data.split.test_time_point, "%Y-%m-%d"
         ),
-        dt_column=config.data.extra_columns.timestamp,
     )
-    train_dataloader, val_dataloader, test = prepare_torch_dataloader(
-        train=train,
-        val=val,
-        test=test,
-        feature_names=feature_names,
-        y_name=config.data.extra_columns.label,
+
+    logger.info(f"Number of total data points: {len(data)}")
+    logger.info(
+        f"Number of data points: train={len(train_data[1])}, val={len(val_data[1])}, test={len(test_data[1])}"
+    )
+    logger.info(f"Number of features after one-hot encoding: {len(feature_names)}")
+
+    # Prepare sparse dataloaders
+    train_dataloader, val_dataloader, test_dataloader = prepare_sparse_torch_dataloader(
+        train_data=train_data,
+        val_data=val_data,
+        test_data=test_data,
     )
 
     # set up model
-    # import embedding module
     model_path = f"model.torch.{args.model}"
     model_module = importlib.import_module(model_path).Model
     model = model_module(input_dim=len(feature_names))
@@ -101,17 +105,25 @@ def main(args: ArgumentParser.parse_args):
             val_losses.append(val_loss.item())
             logger.info(f"val loss: {round(val_loss.item(), 5)}")
 
-    # report test data metric
-    test_features, y_test = (
-        test[feature_names].values,
-        test[config.data.extra_columns.label].values,
-    )
+    # report test data metric - now using test_dataloader to avoid oom in dense matrix
+    all_predictions = []
+    all_labels = []
+
+    model.eval()
     with torch.no_grad():
-        pred_proba = model(torch.FloatTensor(test_features)).numpy()
+        for features, labels in test_dataloader:
+            pred = model(features)
+            all_predictions.append(pred.numpy())
+            all_labels.append(labels.numpy())
+
+    # Concatenate all predictions and labels
+    pred_proba = np.concatenate(all_predictions, axis=0).squeeze()
+    y_test = np.concatenate(all_labels, axis=0)
     y_pred = np.array([1 if proba >= 0.5 else 0 for proba in pred_proba])
+
     auc = roc_auc_score(y_test, pred_proba)
     logger.info(f"AUC-ROC for test data: {round(auc, 5)}")
-    logger.info(f"\n{classification_report(y_pred, y_test)}")
+    logger.info(f"\n{classification_report(y_test, y_pred)}")
 
 
 if __name__ == "__main__":
