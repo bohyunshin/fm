@@ -53,3 +53,37 @@ Set up automatic linting using the following commands:
 # This command will ensure linting runs automatically every time you commit code.
 pre-commit install
 ```
+
+## How to run
+
+### Dataset
+
+Currently, only criteo dataset is supported. Download it in [this link](https://ailab.criteo.com/criteo-sponsored-search-conversion-log-dataset/) before running experiment and place it in `data/criteo` directory.
+
+### Quick Start
+
+You can train implemented models using criteo dataset as
+
+```bash
+$ poetry run python3 src/train_torch.py \
+	--criteo_data_path data/criteo/CriteoSearchData \
+	--model fm \
+	--is_test
+```
+
+
+## Experiment Results
+
+|Model                         |Dataset  |Test loss|Test Macro F1|
+|------------------------------|---------|---------|-------------|
+| Logistic Regression          | criteo  | TBD     | TBD         |
+| Factorization Machine        | criteo  | TBD     | TBD         |
+
+
+## How to run pytest
+
+Run following command.
+
+```bash
+$ poetry run pytest
+```

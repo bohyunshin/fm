@@ -48,14 +48,7 @@ class DataLoader:
             )
             conversion = random.sample(list(df[lambda x: x["Sale"] == 1].index), 5000)
             df = df.loc[not_conversion + conversion]
-        else:
-            N = 1500000  # temporal sampling size due to memory issue
-            self.logger.info(
-                f"Ratio of 1/0 before sampling: {df['Sale'].value_counts() / df.shape[0]}"
-            )
-            sampled_indexes = random.sample([i for i in range(df.shape[0])], N)
-            df = df.loc[sampled_indexes]
-            self.logger.info(
-                f"Ratio of 1/0 before sampling: {df['Sale'].value_counts() / df.shape[0]}"
-            )
+        self.logger.info(
+            f"Ratio of 1/0 in target column: {df['Sale'].value_counts() / df.shape[0]}"
+        )
         return df
