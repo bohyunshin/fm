@@ -5,7 +5,7 @@ import os
 
 # Add parent directory to path to import train_torch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
-from src.train_torch import main
+from train_torch import main
 
 
 class MockDataLoader:
@@ -30,7 +30,7 @@ class MockDataLoader:
         ("fm", "criteo_kaggle"),
     ],
 )
-@patch("src.train_torch.load_data_module")
+@patch("train_torch.load_data_module")
 def test_main_with_different_models(
     mock_load_data_module,
     mock_args,
