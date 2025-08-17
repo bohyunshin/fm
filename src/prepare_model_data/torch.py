@@ -108,8 +108,8 @@ def prepare_sparse_torch_dataloader(
     train_data: Tuple,
     val_data: Tuple,
     test_data: Tuple,
-    batch_size: int = 128,
-    num_workers: int = 1,
+    batch_size: int = 1024,  # Increased default
+    num_workers: int = 4,  # Increased default
 ):
     """Prepare PyTorch DataLoaders for sparse data including test data"""
 
@@ -136,26 +136,29 @@ def prepare_sparse_torch_dataloader(
         shuffle=True,
         num_workers=num_workers,
         pin_memory=True,
-        prefetch_factor=2,
         collate_fn=sparse_collate_fn,
+        prefetch_factor=4,  # Increased prefetch
+        persistent_workers=True,  # Add this for faster worker initialization
     )
     val_dataloader = DataLoader(
         dataset=val_dataset,
         batch_size=batch_size,
-        shuffle=False,  # No need to shuffle validation
+        shuffle=False,
         num_workers=num_workers,
         pin_memory=True,
-        prefetch_factor=2,
         collate_fn=sparse_collate_fn,
+        prefetch_factor=4,  # Increased prefetch
+        persistent_workers=True,  # Add this
     )
     test_dataloader = DataLoader(
         dataset=test_dataset,
         batch_size=batch_size,
-        shuffle=False,  # No need to shuffle test data
+        shuffle=False,
         num_workers=num_workers,
         pin_memory=True,
-        prefetch_factor=2,
         collate_fn=sparse_collate_fn,
+        prefetch_factor=4,  # Increased prefetch
+        persistent_workers=True,  # Add this
     )
 
     return train_dataloader, val_dataloader, test_dataloader

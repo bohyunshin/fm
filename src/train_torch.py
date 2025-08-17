@@ -47,6 +47,15 @@ def main(args: ArgumentParser.parse_args):
     logger.info(f"selected categorical features: {config.data.features.categorical}")
     logger.info(f"hash size: {config.data.hash_size}")
 
+    # Add device detection and setup
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+    if device.type == "cuda":
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+        logger.info(
+            f"Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB"
+        )
+
     # load data
     data_loader_module = load_data_module(args.data_name)
     data = data_loader_module(
@@ -88,6 +97,8 @@ def main(args: ArgumentParser.parse_args):
         train_data=train_data,
         val_data=val_data,
         test_data=test_data,
+        batch_size=1024,  # Increase batch size for GPU
+        num_workers=4,  # Increase workers for faster data loading
     )
 
     # set up model
@@ -98,6 +109,7 @@ def main(args: ArgumentParser.parse_args):
         num_features=num_features,
         embedding_dim=args.embedding_dim,
     )
+    model = model.to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     criterion = nn.BCELoss()
     train_losses = []
@@ -113,6 +125,9 @@ def main(args: ArgumentParser.parse_args):
 
         model.train()
         for (feature_ids, values), labels in train_dataloader:
+            feature_ids = feature_ids.to(device, non_blocking=True)
+            values = values.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
             pred = model(feature_ids, values).squeeze()
             loss = criterion(pred, labels.squeeze())
 
@@ -130,6 +145,9 @@ def main(args: ArgumentParser.parse_args):
         model.eval()
         with torch.no_grad():
             for (feature_ids, values), labels in val_dataloader:
+                feature_ids = feature_ids.to(device, non_blocking=True)
+                values = values.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
                 pred = model(feature_ids, values).squeeze()
                 loss = criterion(pred, labels.squeeze())
 
@@ -145,9 +163,13 @@ def main(args: ArgumentParser.parse_args):
     model.eval()
     with torch.no_grad():
         for (feature_ids, values), labels in test_dataloader:
+            feature_ids = feature_ids.to(device, non_blocking=True)
+            values = values.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
             pred = model(feature_ids, values)
-            all_predictions.append(pred.numpy())
-            all_labels.append(labels.numpy())
+
+            all_predictions.append(pred.cpu().numpy())
+            all_labels.append(labels.cpu().numpy())
 
     # Concatenate all predictions and labels
     pred_proba = np.concatenate(all_predictions, axis=0).squeeze()
