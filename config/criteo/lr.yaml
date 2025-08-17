@@ -10,3 +10,4 @@ data:
   extra_columns:
     label: "Sale"
     timestamp: "click_timestamp"
+  hash_size: 1048576 # 2^20

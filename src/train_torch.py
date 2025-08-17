@@ -12,13 +12,17 @@ from sklearn.metrics import classification_report, roc_auc_score
 from libs.parse_args import parse_args
 from libs.config import load_yaml
 from libs.logger import setup_logger
-from data.criteo import DataLoader
-from preprocess.preprocessor import Preprocessor
 from prepare_model_data.torch import prepare_sparse_torch_dataloader
 
 ROOT_PATH = os.path.join(os.path.dirname(__file__), "..")
-CONFIG_PATH = os.path.join(ROOT_PATH, "./config/{model}.yaml")
+CONFIG_PATH = os.path.join(ROOT_PATH, "./config/{data_name}/{model}.yaml")
 RESULT_PATH = os.path.join(ROOT_PATH, "./result/{test}/{model}/{dt}")
+
+
+def load_data_module(data_name: str):
+    """Load data module dynamically"""
+    data_loader_path = f"data.{data_name}"
+    return importlib.import_module(data_loader_path).DataLoader
 
 
 def main(args: ArgumentParser.parse_args):
@@ -29,31 +33,55 @@ def main(args: ArgumentParser.parse_args):
     os.makedirs(result_path, exist_ok=True)
     logger = setup_logger(os.path.join(result_path, "log.log"))
 
-    config = load_yaml(CONFIG_PATH.format(model=args.model))
+    config = load_yaml(CONFIG_PATH.format(data_name=args.data_name, model=args.model))
 
-    data = DataLoader(
-        data_path=args.criteo_data_path,
+    logger.info(f"data path: {args.data_path}")
+    logger.info(f"data name: {args.data_name}")
+    logger.info(f"model: {args.model}")
+    logger.info(f"embedding_dim: {args.embedding_dim}")
+    logger.info(f"learning_rate: {args.learning_rate}")
+    logger.info(f"epochs: {args.epochs}")
+    logger.info(f"test: {args.is_test}")
+    logger.info(f"result path: {result_path}")
+    logger.info(f"selected numerical features: {config.data.features.numerical}")
+    logger.info(f"selected categorical features: {config.data.features.categorical}")
+    logger.info(f"hash size: {config.data.hash_size}")
+
+    # load data
+    data_loader_module = load_data_module(args.data_name)
+    data = data_loader_module(
+        data_path=args.data_path,
         logger=logger,
     ).load(is_test=args.is_test)
 
+    logger.info("Done loading data")
+
+    # preprocess data
     # Updated to fit encoder only on training data
-    train_data, val_data, test_data, feature_names = Preprocessor(
+    preprocessor_path = f"preprocess.{args.data_name}"
+    preprocessor_module = importlib.import_module(preprocessor_path).Preprocessor
+    train_data, val_data, test_data, num_features = preprocessor_module(
         categorical_columns=config.data.features.categorical,
         timestamp_column=config.data.extra_columns.timestamp,
         y_column=config.data.extra_columns.label,
+        hash_size=int(config.data.hash_size),
+        logger=logger,
     ).fit_and_preprocess(
         data=data,
-        val_time_point=datetime.strptime(config.data.split.val_time_point, "%Y-%m-%d"),
-        test_time_point=datetime.strptime(
-            config.data.split.test_time_point, "%Y-%m-%d"
-        ),
+        val_time_point=datetime.strptime(config.data.split.val_time_point, "%Y-%m-%d")
+        if config.data.split.val_time_point
+        else config.data.split.val_time_point,
+        test_time_point=datetime.strptime(config.data.split.test_time_point, "%Y-%m-%d")
+        if config.data.split.test_time_point
+        else config.data.split.test_time_point,
     )
+    logger.info("Done preprocessing data")
 
     logger.info(f"Number of total data points: {len(data)}")
     logger.info(
         f"Number of data points: train={len(train_data[1])}, val={len(val_data[1])}, test={len(test_data[1])}"
     )
-    logger.info(f"Number of features after one-hot encoding: {len(feature_names)}")
+    logger.info(f"Number of features after one-hot encoding or hashing: {num_features}")
 
     # Prepare sparse dataloaders
     train_dataloader, val_dataloader, test_dataloader = prepare_sparse_torch_dataloader(
@@ -67,7 +95,7 @@ def main(args: ArgumentParser.parse_args):
     model_module = importlib.import_module(model_path).Model
     model = model_module(
         # fm model parameters
-        num_features=len(feature_names),
+        num_features=num_features,
         embedding_dim=args.embedding_dim,
     )
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
@@ -75,6 +103,7 @@ def main(args: ArgumentParser.parse_args):
     train_losses = []
     val_losses = []
 
+    logger.info("Starting training...")
     # train model
     for epoch in range(args.epochs):
         logger.info(f"################## epoch {epoch} ##################")
