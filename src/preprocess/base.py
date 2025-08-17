@@ -25,7 +25,7 @@ class BasePreprocessor(ABC):
         self.logger = logger
         self.encoder: Optional[OneHotEncoder] = None
         self.feature_names: Optional[List[str]] = None
-        self.hasher = FeatureHasher(n_features=hash_size, input_type="dict")
+        self.hasher = FeatureHasher(n_features=hash_size, input_type="string")
 
     @abstractmethod
     def fit_and_preprocess(

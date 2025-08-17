@@ -63,21 +63,64 @@ class Preprocessor(BasePreprocessor):
         )
         self.logger.info("Done filling missing values")
 
-        train_features_hashed = self.hasher.transform(
-            cat_data.iloc[train_indices, :][self.categorical_columns].to_dict(
-                orient="records"
-            )
-        )
-        val_features_hashed = self.hasher.transform(
-            cat_data.iloc[val_indices, :][self.categorical_columns].to_dict(
-                orient="records"
-            )
-        )
-        test_features_hashed = self.hasher.transform(
-            cat_data.iloc[test_indices, :][self.categorical_columns].to_dict(
-                orient="records"
-            )
-        )
+        def hash_in_batches(data_subset, batch_size=100000):
+            """Process data in smaller batches to avoid memory issues"""
+            from scipy.sparse import vstack
+
+            n_rows = len(data_subset)
+            results = []
+
+            for i in range(0, n_rows, batch_size):
+                end_idx = min(i + batch_size, n_rows)
+                batch = data_subset.iloc[i:end_idx]
+
+                # Create string features for this batch only
+                batch_strings = (
+                    batch[self.categorical_columns]
+                    .apply(
+                        lambda row: [f"{col}_{val}" for col, val in row.items()], axis=1
+                    )
+                    .tolist()
+                )
+
+                batch_hashed = self.hasher.transform(batch_strings)
+                results.append(batch_hashed)
+
+                # Log progress for large datasets
+                if i % (batch_size * 10) == 0:
+                    self.logger.info(f"Processed {i}/{n_rows} rows")
+
+            return vstack(results) if results else None
+
+        train_features_hashed = hash_in_batches(cat_data.iloc[train_indices])
+        self.logger.info("Done hashing categorical features in train data")
+
+        val_features_hashed = hash_in_batches(cat_data.iloc[val_indices])
+        self.logger.info("Done hashing categorical features in val data")
+
+        test_features_hashed = hash_in_batches(cat_data.iloc[test_indices])
+        self.logger.info("Done hashing categorical features in test data")
+
+        # train_features_hashed = self.hasher.transform(
+        #     cat_data.iloc[train_indices, :][self.categorical_columns].to_dict(
+        #         orient="records"
+        #     )
+        # )
+        # self.logger.info("Done hashing categorical features in train data")
+
+        # val_features_hashed = self.hasher.transform(
+        #     cat_data.iloc[val_indices, :][self.categorical_columns].to_dict(
+        #         orient="records"
+        #     )
+        # )
+        # self.logger.info("Done hashing categorical features in val data")
+
+        # test_features_hashed = self.hasher.transform(
+        #     cat_data.iloc[test_indices, :][self.categorical_columns].to_dict(
+        #         orient="records"
+        #     )
+        # )
+        # self.logger.info("Done hashing categorical features in test data")
 
         self.logger.info("Done hashing categorical features")
 
