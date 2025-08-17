@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 
 @pytest.fixture
-def mock_dataframe():
+def mock_criteo_data():
     """Create mock DataFrame that matches expected DataLoader format"""
     # Create mock data similar to what DataLoader.load() returns
     np.random.seed(42)
@@ -57,11 +57,48 @@ def mock_dataframe():
 
 
 @pytest.fixture
+def mock_criteo_kaggle_data():
+    """Create mock DataFrame that matches Kaggle Criteo dataset format"""
+    np.random.seed(42)
+    n_samples = 1000
+
+    data = {
+        "label": np.random.randint(0, 2, n_samples),
+    }
+
+    # Add continuous variables i1-i13
+    for i in range(1, 14):
+        # Some continuous variables can have missing values (NaN)
+        values = np.random.uniform(0, 1000, n_samples)
+        # Randomly set some values to NaN to simulate missing data
+        mask = np.random.random(n_samples) < 0.1  # 10% missing values
+        values[mask] = np.nan
+        data[f"I{i}"] = values
+
+    # Add categorical variables c1-c26
+    for i in range(1, 27):
+        # Generate categorical values with varying cardinality
+        cardinality = np.random.randint(10, 1000)  # Random cardinality between 10-1000
+        categories = [f"cat_{i}_{j}" for j in range(cardinality)]
+        # Some categorical variables can have missing values
+        categories.append(None)  # Add None for missing values
+        values = np.random.choice(
+            categories, n_samples, p=[0.9 / cardinality] * cardinality + [0.1]
+        )
+        data[f"C{i}"] = values
+
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
 def mock_args():
     """Create mock args for testing"""
     args = MagicMock()
     args.is_test = True
-    args.criteo_data_path = "/mock/path"
+    args.data_path = "/mock/path"
+    args.data_name = "criteo"  # Default data name
+    args.model = "fm"  # Default model
     args.learning_rate = 0.01
     args.epochs = 2
+    args.embedding_dim = 10
     return args
