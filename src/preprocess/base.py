@@ -14,10 +14,10 @@ class BasePreprocessor(ABC):
     def __init__(
         self,
         categorical_columns: List[str],
-        timestamp_column: str,
+        timestamp_column: Optional[str],
         y_column: str,
         logger: logging.Logger,
-        hash_size: int = None,
+        hash_size: Optional[int] = None,
     ):
         self.categorical_columns = categorical_columns
         self.timestamp_column = timestamp_column
@@ -29,6 +29,9 @@ class BasePreprocessor(ABC):
 
     @abstractmethod
     def fit_and_preprocess(
-        self, data: pd.DataFrame, val_time_point: datetime, test_time_point: datetime
+        self,
+        data: pd.DataFrame,
+        val_time_point: Optional[datetime],
+        test_time_point: Optional[datetime],
     ) -> Tuple:
         raise NotImplementedError("This method should be implemented in subclasses.")

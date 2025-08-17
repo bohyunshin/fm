@@ -1,7 +1,8 @@
 import argparse
+from typing import Optional
 
 
-def parse_args():
+def parse_args() -> Optional[argparse.Namespace]:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str, required=True)
     parser.add_argument(

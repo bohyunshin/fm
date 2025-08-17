@@ -1,6 +1,6 @@
 import logging
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from datetime import datetime
 
 import pandas as pd
@@ -17,9 +17,9 @@ class Preprocessor(BasePreprocessor):
         self,
         categorical_columns: List[str],
         y_column: str,
-        timestamp_column: str = None,
-        logger: logging.Logger = None,
-        hash_size: int = None,
+        logger: logging.Logger,
+        timestamp_column: Optional[str] = None,
+        hash_size: Optional[int] = None,
     ):
         super().__init__(
             categorical_columns=categorical_columns,
@@ -32,8 +32,8 @@ class Preprocessor(BasePreprocessor):
     def fit_and_preprocess(
         self,
         data: pd.DataFrame,
-        val_time_point: datetime = None,
-        test_time_point: datetime = None,
+        val_time_point: Optional[datetime] = None,
+        test_time_point: Optional[datetime] = None,
         train_ratio: float = 0.7,
         val_ratio: float = 0.2,
         test_ratio: float = 0.1,

@@ -1,6 +1,6 @@
 import logging
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from datetime import datetime
 
 import pandas as pd
@@ -21,7 +21,7 @@ class Preprocessor(BasePreprocessor):
         timestamp_column: str,
         y_column: str,
         logger: logging.Logger,
-        hash_size: int = None,
+        hash_size: Optional[int] = None,
     ):
         super().__init__(
             categorical_columns=categorical_columns,
