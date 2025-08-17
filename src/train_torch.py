@@ -97,7 +97,7 @@ def main(args: ArgumentParser.parse_args):
         train_data=train_data,
         val_data=val_data,
         test_data=test_data,
-        batch_size=512,  # Reduced batch size to avoid memory issues
+        batch_size=1024,  # Reduced batch size to avoid memory issues
         num_workers=4,  # Disable multiprocessing to avoid shared memory issues
     )
 
@@ -140,7 +140,7 @@ def main(args: ArgumentParser.parse_args):
 
             if batch_idx % 100 == 0:
                 logger.info(
-                    f"Epoch [{epoch + 1}/{args.epochs}], Batch [{batch_idx + 1}/{len(train_dataloader)}]"
+                    f"Processing Batch [{batch_idx + 1}/{len(train_dataloader)}]"
                 )
 
         train_loss /= len(train_dataloader)
