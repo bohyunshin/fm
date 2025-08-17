@@ -98,7 +98,7 @@ def main(args: ArgumentParser.parse_args):
         val_data=val_data,
         test_data=test_data,
         batch_size=1024,  # Reduced batch size to avoid memory issues
-        num_workers=2,  # Disable multiprocessing to avoid shared memory issues
+        num_workers=1,  # Disable multiprocessing to avoid shared memory issues
     )
 
     # set up model
