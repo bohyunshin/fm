@@ -97,7 +97,7 @@ def main(args: ArgumentParser.parse_args):
         train_data=train_data,
         val_data=val_data,
         test_data=test_data,
-        batch_size=512,  # Reduced batch size to avoid memory issues
+        batch_size=128,  # Reduced batch size to avoid memory issues
         num_workers=1,  # Disable multiprocessing to avoid shared memory issues
     )
 
