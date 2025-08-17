@@ -112,8 +112,9 @@ def main(args: ArgumentParser.parse_args):
         val_loss = 0.0
 
         model.train()
-        for features, labels in train_dataloader:
-            pred = model(features).squeeze()
+        idx = 0
+        for (feature_ids, values), labels in train_dataloader:
+            pred = model(feature_ids, values).squeeze()
             loss = criterion(pred, labels.squeeze())
 
             # backpropagation
@@ -122,6 +123,7 @@ def main(args: ArgumentParser.parse_args):
             optimizer.step()
 
             train_loss += loss
+            idx += 1
 
         train_loss /= len(train_dataloader)
         train_losses.append(train_loss.item())
@@ -129,8 +131,8 @@ def main(args: ArgumentParser.parse_args):
 
         model.eval()
         with torch.no_grad():
-            for features, labels in val_dataloader:
-                pred = model(features).squeeze()
+            for (feature_ids, values), labels in val_dataloader:
+                pred = model(feature_ids, values).squeeze()
                 loss = criterion(pred, labels.squeeze())
 
                 val_loss += loss
@@ -144,8 +146,8 @@ def main(args: ArgumentParser.parse_args):
 
     model.eval()
     with torch.no_grad():
-        for features, labels in test_dataloader:
-            pred = model(features)
+        for (feature_ids, values), labels in test_dataloader:
+            pred = model(feature_ids, values)
             all_predictions.append(pred.numpy())
             all_labels.append(labels.numpy())
 
