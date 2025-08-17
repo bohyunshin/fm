@@ -97,7 +97,7 @@ def main(args: ArgumentParser.parse_args):
         train_data=train_data,
         val_data=val_data,
         test_data=test_data,
-        batch_size=128,  # Reduced batch size to avoid memory issues
+        batch_size=512,  # Reduced batch size to avoid memory issues
         num_workers=4,  # Disable multiprocessing to avoid shared memory issues
     )
 
@@ -124,7 +124,7 @@ def main(args: ArgumentParser.parse_args):
         val_loss = 0.0
 
         model.train()
-        for (feature_ids, values), labels in train_dataloader:
+        for batch_idx, ((feature_ids, values), labels) in enumerate(train_dataloader):
             feature_ids = feature_ids.to(device, non_blocking=True)
             values = values.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
@@ -137,6 +137,11 @@ def main(args: ArgumentParser.parse_args):
             optimizer.step()
 
             train_loss += loss
+
+            if batch_idx % 100 == 0:
+                logger.info(
+                    f"Epoch [{epoch + 1}/{args.epochs}], Batch [{batch_idx + 1}/{len(train_dataloader)}]"
+                )
 
         train_loss /= len(train_dataloader)
         train_losses.append(train_loss.item())
