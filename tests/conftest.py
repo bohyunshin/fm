@@ -9,7 +9,7 @@ def mock_criteo_data():
     """Create mock DataFrame that matches expected DataLoader format"""
     # Create mock data similar to what DataLoader.load() returns
     np.random.seed(42)
-    n_samples = 1000
+    n_samples = 100
 
     # Create timestamps that align with fm.yaml config splits
     # val_time_point: "2020-10-01" (timestamp: 1601510400)
@@ -60,7 +60,7 @@ def mock_criteo_data():
 def mock_criteo_kaggle_data():
     """Create mock DataFrame that matches Kaggle Criteo dataset format"""
     np.random.seed(42)
-    n_samples = 1000
+    n_samples = 100
 
     data = {
         "label": np.random.randint(0, 2, n_samples),
