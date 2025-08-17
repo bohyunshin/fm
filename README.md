@@ -58,7 +58,10 @@ pre-commit install
 
 ### Dataset
 
-Currently, only criteo dataset is supported. Download it in [this link](https://ailab.criteo.com/criteo-sponsored-search-conversion-log-dataset/) before running experiment and place it in `data/criteo` directory.
+Currently, only criteo dataset is supported.
+
+- For non-kaggle data, download it in [this link](https://ailab.criteo.com/criteo-sponsored-search-conversion-log-dataset/) before running experiment and specify file path for `CriteoSearchData`
+- For kaggle data, download it in [this link](https://ailab.criteo.com/ressources/) and specify file path for `train.txt`.
 
 ### Quick Start
 
@@ -66,7 +69,8 @@ You can train implemented models using criteo dataset as
 
 ```bash
 $ poetry run python3 src/train_torch.py \
-	--criteo_data_path data/criteo/CriteoSearchData \
+	--data_path data/criteo/CriteoSearchData \
+	--data_name criteo \
 	--model fm \
 	--is_test
 ```
