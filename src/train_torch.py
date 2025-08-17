@@ -1,3 +1,4 @@
+import copy
 import os
 import importlib
 from argparse import ArgumentParser
@@ -114,6 +115,8 @@ def main(args: ArgumentParser.parse_args):
     criterion = nn.BCELoss()
     train_losses = []
     val_losses = []
+    best_loss = float("inf")
+    early_stopping = False
 
     logger.info("Starting training...")
     # train model
@@ -161,10 +164,51 @@ def main(args: ArgumentParser.parse_args):
             val_losses.append(val_loss.item())
             logger.info(f"val loss: {round(val_loss.item(), 5)}")
 
+        # early stopping logic
+        if best_loss > val_loss:
+            prev_best_loss = best_loss
+            best_loss = val_loss.item()
+            best_model_weights = copy.deepcopy(model.state_dict())
+            patience = args.patience
+            # torch.save(
+            #     model.state_dict(),
+            #     os.path.join(result_path, "weight.pt"),
+            # )
+            logger.info(
+                f"Best validation: {round(best_loss, 4)}, Previous validation loss: {round(prev_best_loss, 4)}"
+            )
+        else:
+            patience -= 1
+            logger.info(f"Validation loss did not decrease. Patience {patience} left.")
+            if patience == 0:
+                logger.info(
+                    f"Patience over. Early stopping at epoch {epoch} with {round(best_loss, 4)} validation loss"
+                )
+                early_stopping = True
+
+        if early_stopping is True:
+            break
+
     # report test data metric - now using test_dataloader to avoid oom in dense matrix
     all_predictions = []
     all_labels = []
 
+    # Load the best model weights
+    model.load_state_dict(best_model_weights)
+    logger.info("Load weight with best validation loss")
+
+    torch.save(
+        {
+            "state_dict": model.state_dict(),
+            "config": {
+                "num_features": num_features,
+                "embedding_dim": args.embedding_dim,
+            },
+        },
+        os.path.join(result_path, "train_result.pt"),
+    )
+
+    logger.info("Calculate test data metrics with best model weights")
     model.eval()
     with torch.no_grad():
         for (feature_ids, values), labels in test_dataloader:
