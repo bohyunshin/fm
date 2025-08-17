@@ -10,17 +10,64 @@ from numpy.typing import NDArray
 
 class SparseDataset(Dataset):
     def __init__(self, features_sparse, labels: np.ndarray):
-        self.features_sparse = features_sparse
         self.labels = torch.FloatTensor(labels)
+
+        # Keep scipy sparse matrix in CSR format for efficient row access
+        if hasattr(features_sparse, "tocsr"):
+            self.features_sparse = features_sparse.tocsr()
+        else:
+            self.features_sparse = features_sparse
+
+        # Pre-compute shape for tensor creation
+        self.num_features = self.features_sparse.shape[1]
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        # Convert sparse row to dense tensor
-        sparse_row = self.features_sparse[idx]
-        dense_features = torch.FloatTensor(sparse_row.toarray().squeeze())
-        return dense_features, self.labels[idx]
+        # Extract sparse row using CSR format (more efficient for row access)
+        sparse_row = self.features_sparse[idx]  # CSR allows efficient row slicing
+
+        # Return indices and values directly - no tensor creation needed
+        if sparse_row.nnz > 0:
+            col_indices = torch.from_numpy(sparse_row.indices).long()
+            row_values = torch.from_numpy(sparse_row.data).float()
+        else:
+            col_indices = torch.empty(0, dtype=torch.long)
+            row_values = torch.empty(0, dtype=torch.float32)
+
+        return (col_indices, row_values), self.labels[idx]
+
+
+def sparse_collate_fn(batch):
+    """Custom collate function to handle variable-length sparse data"""
+    features, labels = zip(*batch)
+
+    # Stack labels normally
+    labels = torch.stack(labels)
+
+    # For features, we need to handle variable lengths
+    # So, pad to max length in batch
+    max_nnz = max(len(feat[0]) for feat in features)
+
+    batch_indices = []
+    batch_values = []
+
+    for feat in features:
+        indices, values = feat
+        # Pad with zeros if needed
+        if len(indices) < max_nnz:
+            pad_size = max_nnz - len(indices)
+            indices = torch.cat([indices, torch.zeros(pad_size, dtype=torch.long)])
+            values = torch.cat([values, torch.zeros(pad_size, dtype=torch.float32)])
+
+        batch_indices.append(indices)
+        batch_values.append(values)
+
+    batch_indices = torch.stack(batch_indices)
+    batch_values = torch.stack(batch_values)
+
+    return (batch_indices, batch_values), labels
 
 
 def split_sparse_data(
@@ -90,6 +137,7 @@ def prepare_sparse_torch_dataloader(
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2,
+        collate_fn=sparse_collate_fn,
     )
     val_dataloader = DataLoader(
         dataset=val_dataset,
@@ -98,6 +146,7 @@ def prepare_sparse_torch_dataloader(
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2,
+        collate_fn=sparse_collate_fn,
     )
     test_dataloader = DataLoader(
         dataset=test_dataset,
@@ -106,6 +155,7 @@ def prepare_sparse_torch_dataloader(
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2,
+        collate_fn=sparse_collate_fn,
     )
 
     return train_dataloader, val_dataloader, test_dataloader
