@@ -93,13 +93,30 @@ def main(args: ArgumentParser.parse_args):
     logger.info(f"Number of features after one-hot encoding or hashing: {num_features}")
 
     # Prepare sparse dataloaders
-    train_dataloader, val_dataloader, test_dataloader = prepare_sparse_torch_dataloader(
-        train_data=train_data,
-        val_data=val_data,
-        test_data=test_data,
-        batch_size=1024,  # Increase batch size for GPU
-        num_workers=4,  # Increase workers for faster data loading
-    )
+    try:
+        train_dataloader, val_dataloader, test_dataloader = (
+            prepare_sparse_torch_dataloader(
+                train_data=train_data,
+                val_data=val_data,
+                test_data=test_data,
+                batch_size=1024,  # Reduced batch size to avoid memory issues
+                num_workers=0,  # Disable multiprocessing to avoid shared memory issues
+            )
+        )
+        logger.info("DataLoaders created successfully with single-threaded processing")
+    except Exception as e:
+        logger.error(f"Error creating DataLoaders: {e}")
+        # Fallback with even smaller batch size
+        train_dataloader, val_dataloader, test_dataloader = (
+            prepare_sparse_torch_dataloader(
+                train_data=train_data,
+                val_data=val_data,
+                test_data=test_data,
+                batch_size=512,
+                num_workers=0,
+            )
+        )
+        logger.info("DataLoaders created with reduced batch size fallback")
 
     # set up model
     model_path = f"model.torch.{args.model}"
