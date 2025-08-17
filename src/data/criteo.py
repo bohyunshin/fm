@@ -3,8 +3,10 @@ import logging
 
 import pandas as pd
 
+from data.base import BaseDataLoader
 
-class DataLoader:
+
+class DataLoader(BaseDataLoader):
     COLUMNS = [
         "Sale",
         "SalesAmountInEuro",
@@ -32,8 +34,7 @@ class DataLoader:
     ]
 
     def __init__(self, data_path: str, logger: logging.Logger):
-        self.data_path = data_path
-        self.logger = logger
+        super().__init__(data_path, logger)
 
     def load(self, is_test: bool):
         df = pd.read_csv(
@@ -48,7 +49,8 @@ class DataLoader:
             )
             conversion = random.sample(list(df[lambda x: x["Sale"] == 1].index), 5000)
             df = df.loc[not_conversion + conversion]
+        ratio_of_target = df["Sale"].value_counts() / df.shape[0]
         self.logger.info(
-            f"Ratio of 1/0 in target column: {df['Sale'].value_counts() / df.shape[0]}"
+            f"Ratio of 1/0 in target column: {round(ratio_of_target[1], 4)} / {round(ratio_of_target[0], 4)}"
         )
         return df
